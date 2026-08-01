@@ -1,0 +1,224 @@
+.page {
+  min-height: 100vh;
+  background: #faf6f0;
+  color: #2b2a28;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+  padding: 2.5rem 1.5rem 4rem;
+}
+
+.container {
+  max-width: 880px;
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: 2rem;
+}
+
+.title {
+  font-family: Georgia, "Hiragino Mincho ProN", serif;
+  font-size: 2rem;
+  font-weight: 600;
+  margin: 0 0 0.35rem;
+  color: #1f3d2b;
+}
+
+.subtitle {
+  margin: 0;
+  color: #6b6a66;
+  font-size: 0.95rem;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid #ece6da;
+  border-radius: 14px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.cardTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 1rem;
+  color: #1f3d2b;
+}
+
+.form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.formRow {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.label {
+  font-size: 0.85rem;
+  color: #6b6a66;
+}
+
+.input {
+  border: 1px solid #d9d2c2;
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: #fffdf9;
+}
+
+.input:focus {
+  outline: 2px solid #6b8f71;
+  outline-offset: 1px;
+}
+
+.button {
+  border: none;
+  border-radius: 8px;
+  padding: 0.65rem 1.2rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: #6b8f71;
+  color: #fff;
+  transition: background 0.15s ease;
+}
+
+.button:hover:not(:disabled) {
+  background: #587a5e;
+}
+
+.button:disabled {
+  background: #b9c6ba;
+  cursor: not-allowed;
+}
+
+.buttonSecondary {
+  composes: button;
+  background: #fff;
+  border: 1px solid #6b8f71;
+  color: #3d5c42;
+}
+
+.buttonSecondary:hover:not(:disabled) {
+  background: #f1f6f2;
+}
+
+.recipientList {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.recipientRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #ece6da;
+  border-radius: 10px;
+  background: #fffdf9;
+}
+
+.recipientRowSelected {
+  composes: recipientRow;
+  border-color: #6b8f71;
+  background: #f1f6f2;
+}
+
+.recipientName {
+  font-weight: 700;
+  color: #1f3d2b;
+}
+
+.recipientMeta {
+  font-size: 0.82rem;
+  color: #8a8880;
+  margin-top: 0.15rem;
+}
+
+.recipientActions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.callHistory {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.callRow {
+  border: 1px solid #ece6da;
+  border-radius: 10px;
+  padding: 0.9rem 1rem;
+}
+
+.callHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+}
+
+.badgeOk {
+  composes: badge;
+  background: #e4f2e7;
+  color: #2c6b41;
+}
+
+.badgeMild {
+  composes: badge;
+  background: #fbf0da;
+  color: #92650f;
+}
+
+.badgeEscalate {
+  composes: badge;
+  background: #fbe4e2;
+  color: #a8332b;
+}
+
+.callTime {
+  font-size: 0.8rem;
+  color: #8a8880;
+}
+
+.callSummary {
+  font-size: 0.9rem;
+  color: #4a4944;
+  line-height: 1.55;
+}
+
+.callReasons {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+  color: #6b6a66;
+}
+
+.empty {
+  color: #8a8880;
+  font-size: 0.9rem;
+  padding: 1rem 0;
+}
+
+.error {
+  background: #fbe4e2;
+  color: #a8332b;
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
