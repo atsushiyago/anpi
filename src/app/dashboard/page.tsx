@@ -50,6 +50,7 @@ export default function DashboardPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [calls, setCalls] = useState<CallRecord[]>([]);
   const [callingId, setCallingId] = useState<string | null>(null);
+  const [callingAll, setCallingAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -147,6 +148,34 @@ export default function DashboardPage() {
     }
   }
 
+  async function handleCallAll() {
+    setError(null);
+    setCallingAll(true);
+    try {
+      const res = await fetch("/api/calls/call-all", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "一括発信に失敗しました。");
+
+      const failed = (data.results ?? []).filter((r: { ok: boolean }) => !r.ok);
+      const notifyFailed = (data.results ?? []).filter(
+        (r: { ok: boolean; notified?: boolean }) => r.ok && r.notified === false
+      );
+      if (failed.length > 0) {
+        setError(`${failed.length}件の通話が失敗しました。詳細はお使いのログをご確認ください。`);
+      } else if (notifyFailed.length > 0) {
+        setError(
+          `${notifyFailed.length}件、通話は成功しましたがメール通知は送信できませんでした(デモ環境の制限によるものです)。`
+        );
+      }
+
+      if (selectedId) await loadCalls(selectedId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "一括発信に失敗しました。");
+    } finally {
+      setCallingAll(false);
+    }
+  }
+
   async function handleCallNow(recipientId: string) {
     setError(null);
     setCallingId(recipientId);
@@ -158,6 +187,11 @@ export default function DashboardPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "発信に失敗しました。");
+      if (data.notified === false) {
+        setError(
+          "通話は成功しましたが、メール通知は送信できませんでした(デモ環境の制限によるものです。通話結果はダッシュボードに反映されています)。"
+        );
+      }
       await loadCalls(recipientId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "発信に失敗しました。");
@@ -179,7 +213,19 @@ export default function DashboardPage() {
         {error && <div className={styles.error}>{error}</div>}
 
         <section className={styles.card}>
-          <h2 className={styles.cardTitle}>見守り対象の方</h2>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
+            <h2 className={styles.cardTitle} style={{ margin: 0 }}>見守り対象の方</h2>
+            {recipients.length > 0 && (
+              <button
+                type="button"
+                className={styles.button}
+                disabled={callingAll || callingId !== null}
+                onClick={handleCallAll}
+              >
+                {callingAll ? "発信中..." : "登録済み全員に今すぐ電話する"}
+              </button>
+            )}
+          </div>
 
           {recipients.length === 0 && !formOpen && (
             <p className={styles.empty}>まだ登録されていません。下のボタンから追加してください。</p>

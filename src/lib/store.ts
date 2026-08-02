@@ -1,9 +1,24 @@
-import { promises as fs } from "fs";
-import path from "path";
+import { Redis } from "@upstash/redis";
 import type { WellnessLevel } from "./calle/classify";
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const DATA_FILE = path.join(DATA_DIR, "wellness-data.json");
+const STORE_KEY = "wellness:data";
+
+let cachedRedis: Redis | null = null;
+
+function getRedis(): Redis {
+  if (cachedRedis) return cachedRedis;
+
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) {
+    throw new Error(
+      "UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN is not set. See .env.local.example."
+    );
+  }
+
+  cachedRedis = new Redis({ url, token });
+  return cachedRedis;
+}
 
 export interface Recipient {
   id: string;
@@ -30,24 +45,13 @@ interface StoreShape {
   calls: CallRecord[];
 }
 
-async function ensureDataFile(): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  try {
-    await fs.access(DATA_FILE);
-  } catch {
-    const empty: StoreShape = { recipients: [], calls: [] };
-    await fs.writeFile(DATA_FILE, JSON.stringify(empty, null, 2), "utf-8");
-  }
-}
-
 async function readStore(): Promise<StoreShape> {
-  await ensureDataFile();
-  const raw = await fs.readFile(DATA_FILE, "utf-8");
-  return JSON.parse(raw) as StoreShape;
+  const stored = await getRedis().get<StoreShape>(STORE_KEY);
+  return stored ?? { recipients: [], calls: [] };
 }
 
 async function writeStore(store: StoreShape): Promise<void> {
-  await fs.writeFile(DATA_FILE, JSON.stringify(store, null, 2), "utf-8");
+  await getRedis().set(STORE_KEY, store);
 }
 
 export async function listRecipients(): Promise<Recipient[]> {
