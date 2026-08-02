@@ -153,6 +153,11 @@ CRON_SECRET=...                              # 現状Cron未使用のため優�
     「+81の番号にはlocale="ja"以外を許可しない」をAPI(POST/PATCH `/api/recipients`)と
     ダッシュボードUI(登録・編集フォーム)の両方でチェックするようにした(2026-08-02)。
     他の国・言語の組み合わせでどこまでサポートされるかは未検証。
+    → Discord `#support`で報告済み(2026-08-02)。他のユーザーから`region=NG`で
+    `"Calling Nigeria in English is not currently supported. Region is not allowed
+    for this channel."`という類似の報告があったことも参考情報として伝えた。
+    国×言語の組み合わせが未整備な地域がある、という同じ制約カテゴリの可能性が高い。
+    回答が来たらここに追記する。
 
 ---
 
