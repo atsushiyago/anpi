@@ -199,8 +199,17 @@ CRON_SECRET=...                              # 現状Cron未使用のため優�
 2. **Resendのメール通知**:ドメイン未認証のままだと審査員宛ての通知は必ず失敗する。
    コスト(ドメイン取得)をかけない方針で合意。通知失敗時もアプリ全体は壊れない設計にしてあるので、
    README上で「デモ環境では通知メールが届かないことがある」旨を明記する想定
-3. **README整備**
-4. **`awesome-phone-call-agents`へのPR作成**(README記載のContribution Areaを要確認)
+3. (完了済み)**README整備**(英語で全面書き直し、2026-08-02)
+4. (完了済み)**`awesome-phone-call-agents`へのPR作成**
+   PR: https://github.com/CALLE-AI/awesome-phone-call-agents/pull/68 (2026-08-02、レビュー待ち)
+   - 本物のアプリ(日本語対応込み)をそのまま出せなかった(検証スクリプトがCJK文字を
+     `validate_english_only()`でリジェクトするため、`apps`配下は完全に英語のみ)。
+     `apps/typescript/wellness-checkin-call/`に、3問の見守りコール+3段階判定パターンだけを
+     抜き出した英語のみ・自己完結の小規模デモ(TSコード約800行、fakeサーバーでのdry-run
+     デフォルト、テスト13件)を新規作成して提出。READMEから本物のライブデモ・
+     GitHubリポジトリにリンク。
+   - `gh` CLIをHomebrewでインストール、ユーザーのGitHubアカウント(atsushiyago)で認証、
+     fork・push・PR作成まで実施。
 5. **デモ動画撮影(~3分)**
 6. (完了済み)CALL-Eフィードバックサーベイの提出、Discord `#support`への投稿
 
