@@ -9,8 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:call": "tsx scripts/test-call.mts",
-    "test:notify": "tsx scripts/test-notify.mts",
-    "migrate:to-redis": "tsx scripts/migrate-json-to-redis.mts"
+    "test:notify": "tsx scripts/test-notify.mts"
   },
   "dependencies": {
     "@call-e/calle": "^0.6.0",

@@ -64,7 +64,6 @@ scripts/
   test-call.mts            Places one real call — connectivity check (npm run test:call)
   test-notify.mts           Places a call and sends the notification email end-to-end
   inspect-call.mts          Looks up a past call by ID for debugging
-  migrate-json-to-redis.mts  One-time migration from the old JSON-file store
 ```
 
 ## Setup
