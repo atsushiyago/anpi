@@ -64,6 +64,7 @@ export default function DashboardPage() {
   const [editPhone, setEditPhone] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editSaving, setEditSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   async function loadRecipients() {
     const res = await fetch("/api/recipients");
@@ -145,6 +146,34 @@ export default function DashboardPage() {
       setError(err instanceof Error ? err.message : "更新に失敗しました。");
     } finally {
       setEditSaving(false);
+    }
+  }
+
+  async function handleDeleteRecipient(recipient: Recipient) {
+    if (
+      !window.confirm(
+        `${recipient.name}さんを削除します。通話履歴もすべて削除され、元に戻せません。よろしいですか?`
+      )
+    ) {
+      return;
+    }
+
+    setError(null);
+    setDeletingId(recipient.id);
+    try {
+      const res = await fetch(`/api/recipients/${recipient.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "削除に失敗しました。");
+
+      if (selectedId === recipient.id) {
+        setSelectedId(null);
+        setCalls([]);
+      }
+      await loadRecipients();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "削除に失敗しました。");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -316,6 +345,13 @@ export default function DashboardPage() {
                       onClick={() => handleCallNow(r.id)}
                     >
                       {callingId === r.id ? "通話中..." : "今すぐ電話する"}
+                    </button>
+                    <button
+                      className={styles.buttonSecondary}
+                      disabled={deletingId === r.id}
+                      onClick={() => handleDeleteRecipient(r)}
+                    >
+                      {deletingId === r.id ? "削除中..." : "削除"}
                     </button>
                   </div>
                 </div>

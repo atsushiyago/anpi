@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateRecipient } from "@/lib/store";
+import { deleteRecipient, updateRecipient } from "@/lib/store";
 
 export async function PATCH(
   request: NextRequest,
@@ -31,4 +31,17 @@ export async function PATCH(
   }
 
   return NextResponse.json({ recipient });
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const deleted = await deleteRecipient(id);
+  if (!deleted) {
+    return NextResponse.json({ error: "指定された recipient が見つかりません。" }, { status: 404 });
+  }
+
+  return NextResponse.json({ ok: true });
 }

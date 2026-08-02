@@ -109,14 +109,14 @@ CRON_SECRET=...                              # 現状Cron未使用のため優�
    通知だけ別の`try/catch`で囲み、`notified: false`として結果に含める設計に変更済み。
    ダッシュボード側もこれを受けて「通話は成功したが通知は送れなかった」旨を表示する。
 
-9. **Vercelのサーバーレス関数はファイルシステムに書き込めない**
+9. **Vercelのサーバーレス関数はファイルシステムに書き込めない**(解決済み)
    JSONファイル方式の`store.ts`をそのままVercelにデプロイすると
    `ENOENT: no such file or directory, mkdir '/var/task/data'`で失敗する。
-   → Neon(Postgres、Vercelの旧Vercel Postgresの後継)への切り替えを試みたが、
-   SQLエディタでの`read-only transaction`エラーなど設定沼にハマり、
-   **応募規模(3人程度への発信)には過剰と判断して撤回**。
-   `store.ts`はJSONファイル版に戻した(現在のバージョン)。
-   Vercel本番デプロイ自体は保留中。ローカル(`npm run dev`)での動作確認のみ実施済み。
+   → Neon(Postgres)への切り替えを試みたが設定沼にハマり撤回。
+   → Render/Railwayへの移行も検討したが、無料枠では永続ディスクが使えず月$5〜7かかると判明。
+   → 最終的に**Upstash Redis**(REST API、無料枠)に切り替えて解決(2026-08-02)。
+   `store.ts`の公開関数シグネチャは変えていないので呼び出し側は無修正。
+   Vercel本番デプロイ済み、動作確認済み。
 
 10. **コンテスト提出要件の確認済み事項**(`call-e.devpost.com/rules`より)
     - 提出に必須: `awesome-phone-call-agents`へのPR、デモ動画(~3分、YouTube/Vimeo公開)、CALL-Eアカウントのメール
@@ -124,6 +124,26 @@ CRON_SECRET=...                              # 現状Cron未使用のため優�
       "Access must be provided... for judging and testing"とあり、審査員がテストしないことは
       許容されているが、テストされる可能性を考えて準備はしておく方が安全
     - 提出物の文章・動画は英語(または英訳付き)が必要。開発中のやり取り自体は日本語のままでよい
+
+11. **`vercel env add`に値をパイプすると、`.env.local`側の値がクォート付きだとそのまま登録されてしまう**
+    `.env.local`の値が`"https://..."`のようにダブルクォート付きだった場合、
+    `dotenv`はローカル読み込み時にクォートを自動で外すため`npm run dev`は問題なく動くが、
+    `grep ... | cut -d'=' -f2- | vercel env add NAME production`のように生の文字列を
+    そのままVercelに渡すとクォートごと登録されてしまい、Upstashクライアントが
+    `Invalid URL`エラーで落ちる(本番`/api/recipients`が500になった実例あり)。
+    → Vercelに登録する前に前後のクォートを剥がす処理を挟む(下記の`strip_quotes`相当)。
+    また`vercel env add name [environment] [git-branch]`は環境を1つしか位置引数に取れないため、
+    `production preview`のように並べて渡すと2番目が`git-branch`として解釈され
+    `branch_not_found`エラーになる。環境ごとに個別に実行すること。
+
+12. **動的ルート(`[id]/route.ts`)にHTTPメソッドを追加すると、動いていたdevサーバーが
+    そのルートだけ応答しなくなることがある**
+    `src/app/api/recipients/[id]/route.ts`に`DELETE`ハンドラを追加したところ、
+    同ファイルの`PATCH`も含めてリクエストがタイムアウトするまで応答しなくなった
+    (他のAPIルートやページのGETは正常)。コード自体に問題はなく、Turbopackのdevサーバーが
+    そのルートファイルの再コンパイルで詰まっていたとみられる。
+    → `npm run dev`を再起動(Ctrl+C→再実行)したら解消。今後も動的ルートにメソッドを
+    追加した直後に同様の現象が起きたら、まず再起動を試すこと。
 
 ---
 
@@ -137,17 +157,20 @@ CRON_SECRET=...                              # 現状Cron未使用のため優�
   - 「登録済み全員に今すぐ電話する」(一括発信)ボタン ※本日追加、ローカルでの動作確認済み(順次発信・各自の質問・通話履歴の記録まで正常動作)
 - 発信・判定・保存・通知のロジックは`wellness-service.ts`の`runWellnessCheck()`に一本化済み。
   単発発信API・一括発信API・Cron(未使用)の3箇所から共通で呼ばれる設計。
+- **本番デプロイ済み**: https://call-e-anpi.vercel.app (Vercel, GitHubの`main`ブランチと連携済み)。
+  `/dashboard`・`/api/recipients`が200で返るのに加え、ダッシュボードから実際に発信ボタンを押す
+  一連の動作(発信→判定→Redis保存→ダッシュボード表示)も本番環境で確認済み(2026-08-02)。
+  残るは一括発信ボタンの本番確認のみ(ローカルでは確認済み)。
 
 ## 未着手・今後の課題
 
 1. **公開デモの扱い**
-   - データ保存をUpstash Redisに切り替え。Vercel(サーバーレス)にそのままデプロイ可能になった。
-     Render/Railwayへの移行は不要と判断(無料枠では月$5〜7かかると判明したため)。
-   - Upstash Redis作成(リージョン: AWS us-east-1)、`.env.local`への環境変数設定、
-     `npm run migrate:to-redis`での既存データ移行、`npm run dev`での動作確認まで完了(2026-08-02)。
-   - 残タスク: Vercel側にも同じ`UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN`を設定して
-     本番デプロイ確認。旧`data/wellness-data.json`(実データ入り)の削除。
-   - 実の家族の電話番号・通話履歴(体調情報を含む)は、公開前に必ず削除・リセットすること。
+   - データ保存はUpstash Redis(REST API、リージョン: AWS us-east-1)。Vercel本番/Preview両方に
+     環境変数設定済み、`npm run migrate:to-redis`で既存データも移行済み。詳細は下記11番参照。
+   - **実データが残ったまま公開している状態**(本人の意向により現状維持、まだ手を付けていない):
+     Redis上に本物の名前・電話番号・メールアドレスが2件入っている
+     (旧`data/wellness-data.json`にも同じ内容が残っている)。
+     公開デモとして人に見せる前には、Redis側のデータをリセットする必要がある。
    - 審査員に自分の電話番号を対象者として登録してもらい、動作確認してもらう方針で合意
 2. **Resendのメール通知**:ドメイン未認証のままだと審査員宛ての通知は必ず失敗する。
    コスト(ドメイン取得)をかけない方針で合意。通知失敗時もアプリ全体は壊れない設計にしてあるので、

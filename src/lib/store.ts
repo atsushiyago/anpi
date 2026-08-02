@@ -91,6 +91,18 @@ export async function updateRecipient(
   return recipient;
 }
 
+export async function deleteRecipient(id: string): Promise<boolean> {
+  const store = await readStore();
+  const index = store.recipients.findIndex((r) => r.id === id);
+  if (index === -1) return false;
+
+  store.recipients.splice(index, 1);
+  // Also scrub this recipient's call history (contains health-related summaries).
+  store.calls = store.calls.filter((c) => c.recipientId !== id);
+  await writeStore(store);
+  return true;
+}
+
 export async function listCalls(recipientId?: string): Promise<CallRecord[]> {
   const store = await readStore();
   const calls = recipientId
