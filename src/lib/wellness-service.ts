@@ -1,6 +1,6 @@
 import { placeCallAndWait } from "./calle/wellness-call";
 import { classifyWellnessResult } from "./calle/classify";
-import { WELLNESS_TASK, WELLNESS_RESULT_SCHEMA } from "./calle/wellness-script";
+import { getWellnessTask, WELLNESS_RESULT_SCHEMA } from "./calle/wellness-script";
 import { notifyFamilyOfCallResult } from "./notify/email";
 import { addCallRecord, type Recipient } from "./store";
 
@@ -33,7 +33,8 @@ export async function runWellnessCheck(recipient: Recipient): Promise<WellnessCh
     call = await placeCallAndWait(
       {
         phone: recipient.phone,
-        task: WELLNESS_TASK,
+        locale: recipient.locale,
+        task: getWellnessTask(recipient.locale),
         resultSchema: WELLNESS_RESULT_SCHEMA,
         idempotencyKey: `wellness:${recipient.id}:${Date.now()}`,
       },
@@ -41,10 +42,10 @@ export async function runWellnessCheck(recipient: Recipient): Promise<WellnessCh
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return { recipientId: recipient.id, ok: false, error: `通話に失敗しました: ${message}` };
+    return { recipientId: recipient.id, ok: false, error: `Call failed: ${message}` };
   }
 
-  const { level, reasons } = classifyWellnessResult(call.structuredResult);
+  const { level, reasons } = classifyWellnessResult(call.structuredResult, recipient.locale);
 
   await addCallRecord({
     id: call.id,
@@ -65,6 +66,7 @@ export async function runWellnessCheck(recipient: Recipient): Promise<WellnessCh
     await notifyFamilyOfCallResult({
       call,
       familyEmail: recipient.familyEmail,
+      locale: recipient.locale,
       recipientName: recipient.name,
     });
   } catch (err) {

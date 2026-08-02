@@ -145,6 +145,15 @@ CRON_SECRET=...                              # 現状Cron未使用のため優�
     → `npm run dev`を再起動(Ctrl+C→再実行)したら解消。今後も動的ルートにメソッドを
     追加した直後に同様の現象が起きたら、まず再起動を試すこと。
 
+13. **CALL-Eは日本の電話番号への英語通話をサポートしていない**(実際にクレジットを使って確認)
+    `locale: "en"`で日本の番号(+81)に発信しようとすると
+    `Call task creation was rejected: The phone number is recognized as Japan,
+    but English is not supported for calls to Japan.` で発信自体が拒否される。
+    → `src/lib/locale.ts`の`isLocaleSupportedForPhone(phone, locale)`で
+    「+81の番号にはlocale="ja"以外を許可しない」をAPI(POST/PATCH `/api/recipients`)と
+    ダッシュボードUI(登録・編集フォーム)の両方でチェックするようにした(2026-08-02)。
+    他の国・言語の組み合わせでどこまでサポートされるかは未検証。
+
 ---
 
 ## 現在の状態(2026-08-02時点)
@@ -158,6 +167,13 @@ CRON_SECRET=...                              # 現状Cron未使用のため優�
   - 対象者の削除ボタン(通話履歴も一緒に削除)。ローカル・本番とも動作確認済み(2026-08-02)。
 - 発信・判定・保存・通知のロジックは`wellness-service.ts`の`runWellnessCheck()`に一本化済み。
   単発発信API・一括発信API・Cron(未使用)の3箇所から共通で呼ばれる設計。
+- **英語対応(i18n)を追加(2026-08-02、コンテスト規約でアプリ本体のデフォルト言語を英語にする
+  必要があるため)**: ダッシュボードUIに言語トグル(デフォルト英語、localStorageに保存)、
+  対象者ごとに通話・通知言語(`locale: "en"|"ja"`)を設定可能に。通話スクリプト・判定理由・
+  メール文面をそれぞれの言語で出し分け。既存データ(Redis)は読み込み時に`locale`未設定なら
+  自動で"ja"を補完(後方互換、動作確認済み)。
+  → ただし13番の制約により、日本の電話番号への英語通話はCALL-E側で拒否される。
+  英語での実通話は日本以外の番号でまだ未検証(クレジットの都合上、次に試す)。
 - **本番デプロイ済み**: https://call-e-anpi.vercel.app (Vercel, GitHubの`main`ブランチと連携済み)。
   `/dashboard`・`/api/recipients`が200で返るのに加え、ダッシュボードから実際に発信ボタンを押す
   一連の動作(発信→判定→Redis保存→ダッシュボード表示)も、一括発信ボタンも含めて

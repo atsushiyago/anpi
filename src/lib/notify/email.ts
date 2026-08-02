@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import type { Call } from "@call-e/calle";
-import { classifyWellnessResult, type WellnessLevel } from "../calle/classify";
+import { classifyWellnessResult, LEVEL_LABEL, type WellnessLevel } from "../calle/classify";
+import type { Locale } from "../locale";
 
 let cachedResend: Resend | null = null;
 
@@ -16,48 +17,100 @@ function getResendClient(): Resend {
   return cachedResend;
 }
 
-const LEVEL_LABEL: Record<WellnessLevel, string> = {
-  ok: "問題なし",
-  mild_concern: "軽度の懸念あり",
-  escalate: "要確認",
-};
-
 const LEVEL_EMOJI: Record<WellnessLevel, string> = {
   ok: "✅",
   mild_concern: "⚠️",
   escalate: "🔴",
 };
 
-function buildSubject(level: WellnessLevel, recipientName?: string): string {
-  const who = recipientName ? `${recipientName}さんの` : "";
-  return `${LEVEL_EMOJI[level]} [見守りコール] ${who}安否確認結果:${LEVEL_LABEL[level]}`;
+const STRINGS: Record<
+  Locale,
+  {
+    senderName: string;
+    subjectPrefix: string;
+    forWho: (name?: string) => string;
+    heading: string;
+    intro: (who: string) => string;
+    verdictLabel: string;
+    summaryLabel: string;
+    noSummary: string;
+    callIdLabel: string;
+    completedAtLabel: string;
+    unknown: string;
+    disclaimer: string;
+    fallbackWho: string;
+  }
+> = {
+  en: {
+    senderName: "Mimamori-Call",
+    subjectPrefix: "Wellness call",
+    forWho: (name) => (name ? `${name}'s` : ""),
+    heading: "Wellness call result",
+    intro: (who) => `The wellness check-in call to ${who} has finished.`,
+    verdictLabel: "Result",
+    summaryLabel: "Call summary",
+    noSummary: "(no summary)",
+    callIdLabel: "Call ID",
+    completedAtLabel: "Completed at",
+    unknown: "unknown",
+    disclaimer:
+      "This is an automated call and automated assessment, not a medical judgment. " +
+      "If anything seems concerning, we recommend reaching out to them directly.",
+    fallbackWho: "them",
+  },
+  ja: {
+    senderName: "見守りコール",
+    subjectPrefix: "見守りコール",
+    forWho: (name) => (name ? `${name}さんの` : ""),
+    heading: "見守りコール結果",
+    intro: (who) => `${who}への安否確認のお電話が完了しました。`,
+    verdictLabel: "判定",
+    summaryLabel: "通話全体の要約",
+    noSummary: "(要約なし)",
+    callIdLabel: "通話ID",
+    completedAtLabel: "完了日時",
+    unknown: "不明",
+    disclaimer:
+      "※これは自動発信・自動判定によるお知らせです。医療的な判断ではありません。" +
+      "気になる点があれば、ご本人へ直接連絡することをおすすめします。",
+    fallbackWho: "ご本人",
+  },
+};
+
+function buildSubject(level: WellnessLevel, locale: Locale, recipientName?: string): string {
+  const t = STRINGS[locale];
+  const who = t.forWho(recipientName);
+  return locale === "ja"
+    ? `${LEVEL_EMOJI[level]} [${t.subjectPrefix}] ${who}安否確認結果:${LEVEL_LABEL[locale][level]}`
+    : `${LEVEL_EMOJI[level]} [${t.subjectPrefix}] ${who ? `${who} ` : ""}result: ${LEVEL_LABEL[locale][level]}`;
 }
 
 function buildHtmlBody(params: {
   level: WellnessLevel;
   reasons: string[];
   call: Call;
+  locale: Locale;
   recipientName?: string;
 }): string {
-  const { level, reasons, call, recipientName } = params;
-  const who = recipientName ? `${recipientName}さん` : "ご本人";
+  const { level, reasons, call, locale, recipientName } = params;
+  const t = STRINGS[locale];
+  const who = recipientName ?? t.fallbackWho;
   const reasonsHtml = reasons.map((r) => `<li>${escapeHtml(r)}</li>`).join("");
 
   return `
     <div style="font-family: sans-serif; line-height: 1.6; color: #222;">
-      <h2>${LEVEL_EMOJI[level]} 見守りコール結果:${LEVEL_LABEL[level]}</h2>
-      <p>${escapeHtml(who)}への安否確認のお電話が完了しました。</p>
-      <p><strong>判定:</strong> ${LEVEL_LABEL[level]}</p>
+      <h2>${LEVEL_EMOJI[level]} ${t.heading}: ${LEVEL_LABEL[locale][level]}</h2>
+      <p>${escapeHtml(t.intro(who))}</p>
+      <p><strong>${t.verdictLabel}:</strong> ${LEVEL_LABEL[locale][level]}</p>
       <ul>${reasonsHtml}</ul>
       <hr />
-      <p><strong>通話全体の要約:</strong><br/>${escapeHtml(call.summary ?? "(要約なし)")}</p>
+      <p><strong>${t.summaryLabel}:</strong><br/>${escapeHtml(call.summary ?? t.noSummary)}</p>
       <p style="font-size: 0.85em; color: #666;">
-        通話ID: ${escapeHtml(call.id)}<br/>
-        完了日時: ${escapeHtml(call.completedAt ?? "不明")}
+        ${t.callIdLabel}: ${escapeHtml(call.id)}<br/>
+        ${t.completedAtLabel}: ${escapeHtml(call.completedAt ?? t.unknown)}
       </p>
       <p style="font-size: 0.8em; color: #999;">
-        ※これは自動発信・自動判定によるお知らせです。医療的な判断ではありません。
-        気になる点があれば、ご本人へ直接連絡することをおすすめします。
+        ${escapeHtml(t.disclaimer)}
       </p>
     </div>
   `;
@@ -74,6 +127,7 @@ function escapeHtml(input: string): string {
 export interface NotifyFamilyInput {
   call: Call;
   familyEmail: string;
+  locale: Locale;
   recipientName?: string;
   /** Verified sender address. Use "onboarding@resend.dev" for quick testing. */
   from?: string;
@@ -93,16 +147,16 @@ export interface NotifyFamilyResult {
 export async function notifyFamilyOfCallResult(
   input: NotifyFamilyInput
 ): Promise<NotifyFamilyResult> {
-  const { call, familyEmail, recipientName, from = "onboarding@resend.dev" } = input;
+  const { call, familyEmail, locale, recipientName, from = "onboarding@resend.dev" } = input;
 
-  const { level, reasons } = classifyWellnessResult(call.structuredResult);
+  const { level, reasons } = classifyWellnessResult(call.structuredResult, locale);
 
   const resend = getResendClient();
   const { data, error } = await resend.emails.send({
-    from: `見守りコール <${from}>`,
+    from: `${STRINGS[locale].senderName} <${from}>`,
     to: [familyEmail],
-    subject: buildSubject(level, recipientName),
-    html: buildHtmlBody({ level, reasons, call, recipientName }),
+    subject: buildSubject(level, locale, recipientName),
+    html: buildHtmlBody({ level, reasons, call, locale, recipientName }),
   });
 
   if (error) {

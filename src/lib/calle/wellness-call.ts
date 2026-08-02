@@ -1,10 +1,13 @@
 import type { Call, JsonObject } from '@call-e/calle';
 import { getCalleClient } from './client';
+import { CALLE_RECIPIENT_LOCALE, type Locale } from '../locale';
 
 export interface PlaceWellnessCallInput {
   /** E.164 phone number, e.g. "+819012345678" */
   phone: string;
   name?: string;
+  /** Language the call should be conducted in. */
+  locale: Locale;
   /** Natural-language description of what the call should accomplish. */
   task: string;
   /** JSON Schema describing the structured data CALL-E should return. */
@@ -18,7 +21,13 @@ export interface PlaceWellnessCallInput {
  *  goes through `recipient`, not the task text, so it's never duplicated. */
 function buildTask(input: PlaceWellnessCallInput): string {
   if (!input.name) return input.task;
-  return `相手は${input.name}さんです。${input.task}`;
+  return input.locale === "ja"
+    ? `相手は${input.name}さんです。${input.task}`
+    : `You are speaking with ${input.name}. ${input.task}`;
+}
+
+function buildRecipient(input: PlaceWellnessCallInput) {
+  return { phone: input.phone, ...CALLE_RECIPIENT_LOCALE[input.locale] };
 }
 
 export async function placeCall(input: PlaceWellnessCallInput): Promise<Call> {
@@ -26,7 +35,7 @@ export async function placeCall(input: PlaceWellnessCallInput): Promise<Call> {
   return client.calls.create(
     {
       task: buildTask(input),
-      recipient: { phone: input.phone },
+      recipient: buildRecipient(input),
       resultSchema: input.resultSchema,
       metadata: input.metadata,
     },
@@ -42,7 +51,7 @@ export async function placeCallAndWait(
   return client.calls.createAndWait(
     {
       task: buildTask(input),
-      recipient: { phone: input.phone },
+      recipient: buildRecipient(input),
       resultSchema: input.resultSchema,
       metadata: input.metadata,
     },

@@ -1,5 +1,12 @@
 import { Redis } from "@upstash/redis";
 import type { WellnessLevel } from "./calle/classify";
+import type { Locale } from "./locale";
+
+/** Recipients created before locale support shipped don't have this field in
+ *  Redis yet. They're real Japanese users already receiving Japanese calls,
+ *  so default missing locale to "ja" rather than the app-wide "en" default
+ *  (which only applies to newly-created recipients). */
+const LEGACY_RECIPIENT_LOCALE: Locale = "ja";
 
 const STORE_KEY = "wellness:data";
 
@@ -25,6 +32,8 @@ export interface Recipient {
   name: string;
   phone: string; // E.164 format, e.g. "+819012345678"
   familyEmail: string;
+  /** Language the wellness call and notification email should use for this person. */
+  locale: Locale;
   createdAt: string;
 }
 
@@ -47,7 +56,13 @@ interface StoreShape {
 
 async function readStore(): Promise<StoreShape> {
   const stored = await getRedis().get<StoreShape>(STORE_KEY);
-  return stored ?? { recipients: [], calls: [] };
+  if (!stored) return { recipients: [], calls: [] };
+
+  stored.recipients = stored.recipients.map((r) => ({
+    ...r,
+    locale: r.locale ?? LEGACY_RECIPIENT_LOCALE,
+  }));
+  return stored;
 }
 
 async function writeStore(store: StoreShape): Promise<void> {

@@ -12,12 +12,12 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null);
 
   if (!body || typeof body.recipientId !== "string") {
-    return NextResponse.json({ error: "recipientId は必須です。" }, { status: 400 });
+    return NextResponse.json({ error: "recipientId is required." }, { status: 400 });
   }
 
   const recipient = await getRecipient(body.recipientId);
   if (!recipient) {
-    return NextResponse.json({ error: "指定された recipientId が見つかりません。" }, { status: 404 });
+    return NextResponse.json({ error: "recipientId not found." }, { status: 404 });
   }
 
   const result = await runWellnessCheck(recipient);
